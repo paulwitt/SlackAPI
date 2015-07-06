@@ -18,6 +18,7 @@ namespace SlackAPI
     public class SlackClient
     {
         readonly string APIToken;
+        static string ProxyAddress = String.Empty;
         bool authWorks = false;
 
         const string APIBaseLocation = "https://slack.com/api/";
@@ -60,7 +61,13 @@ namespace SlackAPI
             APIToken = token;
         }
 
-		public virtual void Connect(Action<LoginResponse> onConnected = null, Action onSocketConnected = null)
+        public SlackClient(string token, string proxyAddress)
+        {
+            APIToken = token;
+            ProxyAddress = proxyAddress;
+        }
+
+        public virtual void Connect(Action<LoginResponse> onConnected = null, Action onSocketConnected = null)
         {
             EmitLogin((loginDetails) =>
             {
@@ -122,6 +129,11 @@ namespace SlackAPI
             Uri requestUri = new Uri(string.Format("{0}?{1}", Path.Combine(APIBaseLocation, path.Path), parameters));
 
             HttpWebRequest request = (HttpWebRequest)HttpWebRequest.Create(requestUri);
+            if (!String.IsNullOrEmpty(ProxyAddress)) {
+                WebProxy myproxy = new WebProxy(ProxyAddress);
+                myproxy.BypassProxyOnLocal = false;
+                request.Proxy = myproxy;
+            }
 
             //This will handle all of the processing.
             RequestState<K> state = new RequestState<K>(request, postParameters, callback);
@@ -523,7 +535,16 @@ namespace SlackAPI
 
             parameters.Add(string.Format("{0}={1}", "channels", string.Join(",", channelIds)));
 
-            using(HttpClient client = new HttpClient())
+            HttpClientHandler httpClientHandler = null;
+            if (!String.IsNullOrEmpty(ProxyAddress)) {
+                httpClientHandler = new HttpClientHandler {
+                    Proxy = new WebProxy(ProxyAddress, false),
+                    UseProxy = true
+                };
+            } else {
+                httpClientHandler = new HttpClientHandler {};
+            }
+            using(HttpClient client = new HttpClient(httpClientHandler))
             using (MultipartFormDataContent form = new MultipartFormDataContent())
             {
                 form.Add(new ByteArrayContent(fileData), "file", fileName);

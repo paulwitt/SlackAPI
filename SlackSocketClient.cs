@@ -28,6 +28,11 @@ namespace SlackAPI
         {
             
         }
+        public SlackSocketClient(string token, string proxyAddress)
+            : base(token, proxyAddress)
+        {
+
+        }
 
 		public override void Connect(Action<LoginResponse> onConnected, Action onSocketConnected = null)
 		{
